@@ -1,100 +1,76 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
+
 import { Form } from '../Form/Form';
 import { Section } from '../Section/Section';
 import { ContactsList } from '../ContactsList/ContactsList';
 import { Filter } from '../Filter/Filter';
-import { nanoid } from 'nanoid';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+import { nanoid } from 'nanoid';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+export function App() {
+  const [contacts, setContacts] = useState(() => getContactsFromStorage());
+  const [filterName, setFilter] = useState('');
 
   // Получение данных формы  и добавление контакта
-  addContact = data => {
-    if (this.checkExistingContact(data.name)) {
+  function addContact(name, number) {
+    if (checkExistingContact(name)) {
       return;
     }
-
     const contact = {
       id: nanoid(),
-      ...data,
+      name,
+      number,
     };
 
-    this.setState(({ contacts }) => ({
-      contacts: [contact, ...contacts],
-    }));
-  };
+    setContacts(state => [...state, contact]);
+  }
 
-  // Запись значения фильтра в свойство состояния
-  setFilter = name => {
-    this.setState({ filter: name });
-  };
+  // Проверка на существующий контакт
+  function checkExistingContact(newName) {
+    const existingСontact = contacts.find(({ name }) => name === newName);
+
+    if (existingСontact) {
+      toast(`${existingСontact.name} is already in contacts`);
+      return true;
+    }
+  }
 
   //Фильтрация контактов по имени
-  filterContacts = () => {
-    const { filter, contacts } = this.state;
-    const normalizedFilter = filter.toLowerCase();
+  function filterContacts() {
+    const normalizedFilter = filterName.toLowerCase();
 
     return contacts.filter(({ name }) =>
       name.toLowerCase().includes(normalizedFilter)
     );
-  };
-
-  // Проверка на существующий контакт
-  checkExistingContact = newName => {
-    const existingСontact = this.state.contacts.find(
-      ({ name }) => name === newName
-    );
-
-    if (existingСontact) {
-      alert(`${existingСontact.name} is already in contacts`);
-      return true;
-    }
-  };
-
-  // Удаление контакта
-  deleteContact = contactId => {
-    this.setState(({ contacts }) => ({
-      contacts: contacts.filter(({ id }) => id !== contactId),
-    }));
-  };
-
-  // Жизненный цикл монтирования(получение данных из хранилища)
-  componentDidMount() {
-    const parsedContacts = JSON.parse(localStorage.getItem('contacts'));
-
-    if (parsedContacts) {
-      this.setState({
-        contacts: parsedContacts,
-      });
-    }
   }
 
-  // Жизненный цикл обновления(запись данных в хранилище)
-  componentDidUpdate(prevProps, prevState) {
-    const { contacts } = this.state;
-
-    if (contacts !== prevState.contacts) {
-      localStorage.setItem('contacts', JSON.stringify(contacts));
-    }
+  //  Удаление контакта
+  function deleteContact(contactId) {
+    setContacts(state => state.filter(({ id }) => id !== contactId));
   }
 
-  render() {
-    const { filter } = this.state;
+  //  Получение контактов из хранилища
+  function getContactsFromStorage() {
+    return JSON.parse(window.localStorage.getItem('contacts')) ?? [];
+  }
 
-    return (
-      <Section title="Phonebook">
-        <Form onSubmit={this.addContact}></Form>
-        <Section title="Contacts">
-          <Filter filter={filter} setFilter={this.setFilter}></Filter>
-          <ContactsList
-            contacts={this.filterContacts()}
-            deleteContact={this.deleteContact}
-          ></ContactsList>
-        </Section>
+  //  Запись контактов в хранилище
+  useEffect(() => {
+    window.localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
+  return (
+    <Section title="Phonebook">
+      <Form onSubmit={addContact}></Form>
+      <Section title="Contacts">
+        <Filter filter={filterName} setFilter={setFilter}></Filter>
+        <ContactsList
+          contacts={filterContacts()}
+          deleteContact={deleteContact}></ContactsList>
       </Section>
-    );
-  }
+      <ToastContainer position="top-left" autoClose={3000} />
+    </Section>
+  );
 }
